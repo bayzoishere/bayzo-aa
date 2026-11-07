@@ -1,6 +1,7 @@
 -- ========================================================
---  Bayzo AA — Core Engine & UI Rebranding Layer
---  Author / Owner: Bayzo (@bayzoishere)
+--  Bayzo AA — Modern Dark UI & Rebranding Engine
+--  Owner: Bayzo (@bayzoishere)
+--  Discord: https://discord.gg/Mft9cUtF74
 -- ========================================================
 
 task.spawn(function()
@@ -46,40 +47,77 @@ task.spawn(function()
         end
     end
 
-    -- 3. Text Sanitizer Function (for UI only)
+    -- 3. Universal Text Sanitizer
     local function sanitizeText(str)
         if typeof(str) ~= "string" then return str end
         if str:find("pGmepY6TC") then
             return BAYZO_DISCORD
         end
-        local res = str:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%s*\[Aa][Nn][Ii][Mm][Ee]%s*[Aa][Dd][Vv][Ee][Nn][Tt][Uu][Rr][Ee][Ss]", "Bayzo AA \\ Anime Adventures")
-        res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]", "Bayzo AA")
-        res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Aa][Aa]", "Bayzo AA")
-        res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Ww][Oo][Rr][Ll][Dd]", "Bayzo AA")
-        res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Hh][Uu][Bb]", "Bayzo AA")
-        res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
-        return res
+        local lower = str:lower()
+        if lower:find("bocchi") then
+            local res = str
+            -- Specific multi-word patterns first
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%s*\[Aa][Nn][Ii][Mm][Ee]%s*[Aa][Dd][Vv][Ee][Nn][Tt][Uu][Rr][Ee][Ss]", "Bayzo AA \\ Anime Adventures")
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%.?", "Bayzo AA")
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Aa][Aa]", "Bayzo AA")
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Ww][Oo][Rr][Ll][Dd]", "Bayzo AA")
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Hh][Uu][Bb]", "Bayzo AA")
+            res = res:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
+            return res
+        end
+        if str == "Hidden User" then
+            return "Bayzo"
+        end
+        if str == "Account" then
+            return "Owner / Verified"
+        end
+        return str
     end
 
-    -- 4. Precise Maclib & Loading Screen Scoping
-    local function isScriptGui(inst)
-        if not inst then return false end
-        local sg = inst:FindFirstAncestorOfClass("ScreenGui")
-        if sg then
-            if sg.Name == "MacLib" or sg:FindFirstChild("Base") then
-                return true
-            end
-        end
-        local base = inst:FindFirstAncestor("Base")
-        if base and (base:FindFirstChild("Sidebar") or base:FindFirstChild("BaseUICorner")) then
-            return true
-        end
-        return false
-    end
-
-    local function patchInstance(inst)
+    -- 4. New Modern UI Model Reskinner (Transforms Maclib into Sleek Minimalist Onyx Theme)
+    local function applyBayzoModernTheme(base)
+        if not base or not base:IsA("Frame") then return end
         pcall(function()
-            -- A. Auto-Bypass / Hide Bocchi Loading Screen
+            -- Modern Onyx Background (Clean, Lightweight, Sleek)
+            base.BackgroundColor3 = Color3.fromRGB(13, 15, 20)
+            local stroke = base:FindFirstChildOfClass("UIStroke")
+            if stroke then
+                stroke.Color = Color3.fromRGB(35, 45, 65)
+                stroke.Transparency = 0.4
+            end
+            local corner = base:FindFirstChildOfClass("UICorner")
+            if corner then
+                corner.CornerRadius = UDim.new(0, 8)
+            end
+
+            -- Sidebar Styling
+            local sidebar = base:FindFirstChild("Sidebar")
+            if sidebar then
+                sidebar.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+                local sCorner = sidebar:FindFirstChildOfClass("UICorner")
+                if sCorner then
+                    sCorner.CornerRadius = UDim.new(0, 8)
+                end
+
+                -- Restyle macOS colored dots (red, yellow, green) into sleek minimalist buttons
+                for _, btn in ipairs(sidebar:GetDescendants()) do
+                    if (btn:IsA("TextButton") or btn:IsA("ImageButton") or btn:IsA("Frame")) then
+                        if btn.AbsoluteSize.X > 8 and btn.AbsoluteSize.X < 22 and btn.AbsoluteSize.Y > 8 and btn.AbsoluteSize.Y < 22 then
+                            local c = btn:FindFirstChildOfClass("UICorner")
+                            if c and c.CornerRadius.Scale >= 0.4 then
+                                btn.BackgroundColor3 = Color3.fromRGB(40, 48, 62)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    -- 5. Inspector & Mutation Engine
+    local function inspectInstance(inst)
+        pcall(function()
+            -- A. Auto-Bypass / Destroy Bocchi Loading Screen
             if inst:IsA("TextLabel") and (inst.Text:find("Preparing your settings") or inst.Text:find("Loading...")) then
                 local frame = inst:FindFirstAncestorOfClass("Frame") or inst:FindFirstAncestorOfClass("ScreenGui")
                 if frame then
@@ -94,11 +132,12 @@ task.spawn(function()
                 return
             end
 
-            -- B. Strictly ONLY patch elements inside Maclib UI
-            if not isScriptGui(inst) then
-                return
+            -- B. Detect Maclib Base Frame and apply Modern Theme
+            if inst.Name == "Base" and inst:IsA("Frame") and (inst:FindFirstChild("Sidebar") or inst:FindFirstChild("BaseUICorner")) then
+                applyBayzoModernTheme(inst)
             end
 
+            -- C. Text sanitizing (only if text contains keywords or inside script GUI)
             if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
                 local current = inst.Text
                 local cleaned = sanitizeText(current)
@@ -112,11 +151,12 @@ task.spawn(function()
                         inst.Text = c
                     end
                 end)
+            -- D. Replace User Profile avatar in Maclib Sidebar
             elseif inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
-                -- Only replace User Profile avatar in Maclib Sidebar
                 local parent = inst.Parent
                 if parent and (parent.Name:lower():find("user") or parent.Name:lower():find("profile") or parent.Name:lower():find("avatar")) then
-                    if bayzoIcon and inst.AbsoluteSize.X > 20 and inst.AbsoluteSize.X < 80 then
+                    local baseAncestor = inst:FindFirstAncestor("Base")
+                    if baseAncestor and bayzoIcon and inst.AbsoluteSize.X > 20 and inst.AbsoluteSize.X < 80 then
                         inst.Image = bayzoIcon
                         inst:GetPropertyChangedSignal("Image"):Connect(function()
                             if inst.Image ~= bayzoIcon then
@@ -129,23 +169,49 @@ task.spawn(function()
         end)
     end
 
-    local function scanContainer(container)
+    -- 6. Setup Listeners for all UI Containers
+    local function listenContainer(container)
         if not container then return end
         for _, descendant in ipairs(container:GetDescendants()) do
-            patchInstance(descendant)
+            inspectInstance(descendant)
         end
         container.DescendantAdded:Connect(function(descendant)
-            task.defer(patchInstance, descendant)
+            task.defer(inspectInstance, descendant)
         end)
     end
 
-    pcall(scanContainer, CoreGui)
-    pcall(scanContainer, PlayerGui)
+    pcall(listenContainer, CoreGui)
+    pcall(listenContainer, PlayerGui)
     if typeof(gethui) == "function" then
-        pcall(scanContainer, gethui())
+        pcall(listenContainer, gethui())
     end
 
-    -- 5. Complete & Robust Discord Webhook Interceptor
+    -- 7. Sweeper loop for late-rendered items & tabs switching
+    task.spawn(function()
+        for i = 1, 60 do
+            task.wait(0.5)
+            pcall(function()
+                local containers = { CoreGui, PlayerGui, (typeof(gethui) == "function" and gethui()) }
+                for _, cont in ipairs(containers) do
+                    if cont then
+                        for _, inst in ipairs(cont:GetDescendants()) do
+                            if inst:IsA("TextLabel") or inst:IsA("TextButton") then
+                                local t = inst.Text
+                                local c = sanitizeText(t)
+                                if c ~= t then
+                                    inst.Text = c
+                                end
+                            elseif inst.Name == "Base" and inst:IsA("Frame") then
+                                applyBayzoModernTheme(inst)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+
+    -- 8. Complete & Robust Discord Webhook Interceptor
     pcall(function()
         local function sanitizePayload(req)
             if typeof(req) ~= "table" then return req end
