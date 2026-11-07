@@ -6,6 +6,7 @@
 task.spawn(function()
     local Players = game:GetService("Players")
     local CoreGui = game:GetService("CoreGui")
+    local HttpService = game:GetService("HttpService")
     local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 15)
 
@@ -13,7 +14,7 @@ task.spawn(function()
     local BAYZO_AVATAR_URL = "https://avatars.githubusercontent.com/u/192319507?v=4"
     local BAYZO_ICON_PATH = "bayzo_aa_avatar.png"
 
-    -- 1. Cache Avatar Asset
+    -- 1. Cache Avatar Asset locally
     local bayzoIcon = nil
     pcall(function()
         if typeof(writefile) == "function" and typeof(getcustomasset) == "function" then
@@ -45,7 +46,7 @@ task.spawn(function()
         end
     end
 
-    -- 3. Text Sanitizer Function
+    -- 3. Text Sanitizer Function (for UI only)
     local function sanitizeText(str)
         if typeof(str) ~= "string" then return str end
         if str:find("pGmepY6TC") then
@@ -144,40 +145,95 @@ task.spawn(function()
         pcall(scanContainer, gethui())
     end
 
-    -- 5. Safe Discord Webhook Handler (Preserves payload integrity)
+    -- 5. Complete & Robust Discord Webhook Interceptor
     pcall(function()
         local function sanitizePayload(req)
-            if typeof(req) == "table" and typeof(req.Url) == "string" and req.Url:find("discord.com/api/webhooks") then
-                if typeof(req.Body) == "string" then
-                    pcall(function()
-                        local b = req.Body
-                        b = b:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Aa][Aa]", "Bayzo AA")
-                        b = b:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Ww][Oo][Rr][Ll][Dd]", "Bayzo AA")
-                        b = b:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Hh][Uu][Bb]", "Bayzo AA")
-                        b = b:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
-                        b = b:gsub("pGmepY6TC", "Mft9cUtF74")
-                        req.Body = b
+            if typeof(req) ~= "table" then return req end
+            local url = req.Url or req.url or req.URL
+            local body = req.Body or req.body or req.data
+            
+            if typeof(url) == "string" and url:lower():find("discord") and url:lower():find("webhook") then
+                if typeof(body) == "string" then
+                    local ok, data = pcall(function()
+                        return HttpService:JSONDecode(body)
                     end)
+                    if ok and typeof(data) == "table" then
+                        data["username"] = "Bayzo AA"
+                        data["avatar_url"] = BAYZO_AVATAR_URL
+                        if typeof(data["embeds"]) == "table" then
+                            for _, emb in ipairs(data["embeds"]) do
+                                if typeof(emb) == "table" then
+                                    if typeof(emb["thumbnail"]) == "table" then
+                                        emb["thumbnail"]["url"] = BAYZO_AVATAR_URL
+                                    end
+                                    if typeof(emb["footer"]) == "table" then
+                                        if typeof(emb["footer"]["text"]) == "string" then
+                                            emb["footer"]["text"] = emb["footer"]["text"]:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%.?", "Bayzo AA"):gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
+                                        else
+                                            emb["footer"]["text"] = "Bayzo AA"
+                                        end
+                                        emb["footer"]["icon_url"] = BAYZO_AVATAR_URL
+                                    end
+                                    if typeof(emb["author"]) == "table" then
+                                        if typeof(emb["author"]["name"]) == "string" then
+                                            emb["author"]["name"] = emb["author"]["name"]:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%.?", "Bayzo AA"):gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
+                                        else
+                                            emb["author"]["name"] = "Bayzo AA"
+                                        end
+                                        emb["author"]["icon_url"] = BAYZO_AVATAR_URL
+                                    end
+                                end
+                            end
+                        end
+                        local encOk, newBody = pcall(function()
+                            return HttpService:JSONEncode(data)
+                        end)
+                        if encOk and typeof(newBody) == "string" then
+                            body = newBody
+                        end
+                    else
+                        -- Fallback string replacement
+                        body = body:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]%s*[Rr][Ee][Ww][Oo][Rr][Kk][Ee][Dd]%.?", "Bayzo AA")
+                        body = body:gsub("[Bb][Oo][Cc][Cc][Hh][Ii]", "Bayzo")
+                    end
+
+                    if req.Body ~= nil then req.Body = body end
+                    if req.body ~= nil then req.body = body end
+                    if req.data ~= nil then req.data = body end
                 end
             end
             return req
         end
 
-        local reqCandidates = {
-            (typeof(syn) == "table" and syn.request),
-            (typeof(http) == "table" and http.request),
-            http_request,
-            request,
-            (typeof(fluxus) == "table" and fluxus.request)
-        }
-        for _, rFunc in ipairs(reqCandidates) do
-            if typeof(rFunc) == "function" and typeof(hookfunction) == "function" then
-                local oldReq; oldReq = hookfunction(rFunc, function(req)
-                    return oldReq(sanitizePayload(req))
+        local hooked = {}
+        local function hookCandidate(fn)
+            if typeof(fn) == "function" and not hooked[fn] and typeof(hookfunction) == "function" then
+                hooked[fn] = true
+                local oldFn; oldFn = hookfunction(fn, function(req, ...)
+                    local sReq = sanitizePayload(req)
+                    return oldFn(sReq, ...)
                 end)
-                break
             end
         end
+
+        pcall(function() hookCandidate(request) end)
+        pcall(function() hookCandidate(http_request) end)
+        pcall(function() if typeof(syn) == "table" then hookCandidate(syn.request) end end)
+        pcall(function() if typeof(http) == "table" then hookCandidate(http.request) end end)
+        pcall(function() if typeof(fluxus) == "table" then hookCandidate(fluxus.request) end end)
+        pcall(function() if typeof(krnl) == "table" then hookCandidate(krnl.request) end end)
+        pcall(function()
+            if typeof(game.HttpPost) == "function" and typeof(hookfunction) == "function" then
+                local oldHttpPost; oldHttpPost = hookfunction(game.HttpPost, function(self, url, body, ...)
+                    if typeof(url) == "string" and url:lower():find("discord") and url:lower():find("webhook") then
+                        local fakeReq = { Url = url, Body = body }
+                        fakeReq = sanitizePayload(fakeReq)
+                        body = fakeReq.Body or body
+                    end
+                    return oldHttpPost(self, url, body, ...)
+                end)
+            end
+        end)
     end)
 end)
 
